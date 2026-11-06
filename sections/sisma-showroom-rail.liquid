@@ -1,0 +1,173 @@
+{%- comment -%}
+  Sisma Showroom Rail
+  Cars from a collection hang on a lit showroom track. Customers drag or swipe
+  through them; the centred car comes forward with its year, mileage, origin,
+  price and a button to open the listing.
+
+  Year / mileage / origin are read from the first line of each listing's
+  description, e.g. "2022 • 7,226 KM • JAPAN IMPORT".
+
+  Badges (top-right of a photo):
+    SOLD     - the car is no longer available
+    REDUCED  - "Compare at price" is higher than the price
+    NEW      - published within the last N days (section setting)
+    Any product tag starting with "badge:" overrides these, e.g. "badge:Tax reduction".
+{%- endcomment -%}
+
+{{ 'sisma-showroom-rail.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'sisma-showroom-rail.js' | asset_url }}" defer="defer"></script>
+
+{%- liquid
+  assign collection = section.settings.collection
+  assign now_s = 'now' | date: '%s' | plus: 0
+  assign new_window_s = section.settings.new_days | times: 86400
+  assign rail_id = 'SismaRail-' | append: section.id
+-%}
+
+<sisma-showroom-rail
+  id="{{ rail_id }}"
+  class="sr{% if section.settings.photo_style == 'full' %} sr--full-photo{% endif %}"
+  style="--sr-bg: {{ section.settings.color_bg }}; --sr-fg: {{ section.settings.color_text }}; --sr-accent: {{ section.settings.color_accent }}; --sr-muted: {{ section.settings.color_text | color_mix: section.settings.color_bg, 55 }}; --sr-line: {{ section.settings.color_text | color_mix: section.settings.color_bg, 20 }};"
+  data-start="{{ section.settings.start_index | minus: 1 }}"
+  role="region"
+  aria-roledescription="carousel"
+  aria-label="{{ section.settings.eyebrow | default: 'Cars' | escape }}"
+>
+  {%- if section.settings.eyebrow != blank or section.settings.subheading != blank -%}
+    <div class="sr__head">
+      {%- if section.settings.eyebrow != blank -%}<span class="sr__eyebrow">{{ section.settings.eyebrow | escape }}</span>{%- endif -%}
+      {%- if section.settings.eyebrow != blank and section.settings.subheading != blank -%}<span class="sr__divider" aria-hidden="true"></span>{%- endif -%}
+      {%- if section.settings.subheading != blank -%}<span class="sr__subhead">{{ section.settings.subheading | escape }}</span>{%- endif -%}
+    </div>
+  {%- endif -%}
+
+  <div class="sr__stage">
+    <div class="sr__track" aria-hidden="true"></div>
+
+    <button type="button" class="sr__arrow sr__arrow--prev" aria-label="Previous car" aria-controls="{{ rail_id }}-list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <button type="button" class="sr__arrow sr__arrow--next" aria-label="Next car" aria-controls="{{ rail_id }}-list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
+
+    <ul class="sr__rail" id="{{ rail_id }}-list" tabindex="0" aria-label="Use the left and right arrow keys to browse cars">
+      {%- if collection != blank and collection.products_count > 0 -%}
+        {%- for product in collection.products limit: section.settings.products_to_show -%}
+          {%- liquid
+            assign badge = ''
+            assign badge_class = ''
+            for tag in product.tags
+              assign tag_down = tag | downcase
+              if tag_down contains 'badge:'
+                assign badge = tag | split: ':' | last | strip
+              endif
+            endfor
+            if badge == blank
+              if product.available == false
+                assign badge = 'Sold'
+                assign badge_class = ' sr__badge--sold'
+              elsif product.compare_at_price > product.price
+                assign badge = 'Reduced'
+              elsif section.settings.new_days > 0
+                assign pub_s = product.published_at | date: '%s' | plus: 0
+                assign age_s = now_s | minus: pub_s
+                if age_s < new_window_s
+                  assign badge = 'New'
+                endif
+              endif
+            endif
+            assign desc = product.description | strip_html | strip_newlines | truncate: 260
+          -%}
+          <li
+            class="sr__item"
+            data-title="{{ product.title | escape }}"
+            data-price="{{ product.price | money_without_trailing_zeros | strip_html | escape }}"
+            data-url="{{ product.url }}"
+            data-desc="{{ desc | escape }}"
+          >
+            <span class="sr__tag" aria-hidden="true">
+              <span class="sr__tag-body">
+                <span class="sr__tag-year"></span>
+                <span class="sr__tag-km"></span>
+              </span>
+            </span>
+            <a class="sr__card" href="{{ product.url }}" tabindex="-1" draggable="false">
+              <div class="sr__photo">
+                {%- if badge != blank -%}<span class="sr__badge{{ badge_class }}">{{ badge | escape }}</span>{%- endif -%}
+                {%- if product.featured_media -%}
+                  {{
+                    product.featured_media
+                    | image_url: width: 900
+                    | image_tag:
+                      loading: 'lazy',
+                      widths: '360, 540, 720, 900',
+                      sizes: '(max-width: 749px) 68vw, 330px',
+                      alt: product.title,
+                      draggable: 'false'
+                  }}
+                {%- else -%}
+                  {{ 'product-1' | placeholder_svg_tag }}
+                {%- endif -%}
+              </div>
+            </a>
+          </li>
+        {%- endfor -%}
+      {%- else -%}
+        {%- for i in (1..5) -%}
+          <li class="sr__item" data-title="Your car title" data-price="RM 000,000" data-url="#" data-desc="2024 • 10,000 KM • JAPAN IMPORT">
+            <span class="sr__tag" aria-hidden="true"><span class="sr__tag-body"><span class="sr__tag-year"></span><span class="sr__tag-km"></span></span></span>
+            <a class="sr__card" href="#" tabindex="-1"><div class="sr__photo">{{ 'product-1' | placeholder_svg_tag }}</div></a>
+          </li>
+        {%- endfor -%}
+      {%- endif -%}
+    </ul>
+  </div>
+
+  <div class="sr__info" aria-live="polite">
+    <span class="sr__count" data-sr-count></span>
+    <h2 class="sr__name" data-sr-name></h2>
+    <p class="sr__meta" data-sr-meta></p>
+    <p class="sr__price" data-sr-price></p>
+    <div class="sr__actions">
+      <a class="sr__btn sr__btn--primary" href="#" data-sr-link>{{ section.settings.button_label | escape }}</a>
+      {%- if section.settings.show_all_label != blank and collection != blank -%}
+        <a class="sr__btn sr__btn--ghost" href="{{ collection.url }}">{{ section.settings.show_all_label | escape }}</a>
+      {%- endif -%}
+    </div>
+  </div>
+</sisma-showroom-rail>
+
+{% schema %}
+{
+  "name": "Showroom rail",
+  "tag": "section",
+  "class": "section section-sisma-showroom-rail",
+  "settings": [
+    { "type": "collection", "id": "collection", "label": "Collection" },
+    { "type": "range", "id": "products_to_show", "label": "Cars to show", "min": 3, "max": 30, "step": 1, "default": 16 },
+    { "type": "range", "id": "start_index", "label": "Start on car number", "min": 1, "max": 10, "step": 1, "default": 3 },
+    { "type": "header", "content": "Text" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Sisma Certified" },
+    { "type": "text", "id": "subheading", "label": "Subheading", "default": "Now in the showroom" },
+    { "type": "text", "id": "button_label", "label": "Car button label", "default": "View this car" },
+    { "type": "text", "id": "show_all_label", "label": "Collection button label", "info": "Leave empty to hide", "default": "Browse all cars" },
+    { "type": "header", "content": "Photos and badges" },
+    {
+      "type": "select", "id": "photo_style", "label": "Photo framing", "default": "crop",
+      "options": [
+        { "value": "crop", "label": "Crop to the car" },
+        { "value": "full", "label": "Full square photo" }
+      ]
+    },
+    { "type": "range", "id": "new_days", "label": "Show NEW badge for (days)", "info": "Set to 0 to turn off", "min": 0, "max": 60, "step": 1, "default": 14 },
+    { "type": "header", "content": "Colours" },
+    { "type": "color", "id": "color_bg", "label": "Background", "default": "#ecebe7" },
+    { "type": "color", "id": "color_text", "label": "Text", "default": "#16181b" },
+    { "type": "color", "id": "color_accent", "label": "Badge accent", "default": "#c47f17" }
+  ],
+  "presets": [
+    { "name": "Showroom rail" }
+  ]
+}
+{% endschema %}

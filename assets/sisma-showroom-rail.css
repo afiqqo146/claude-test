@@ -1,0 +1,328 @@
+/*
+  Sisma Showroom Rail
+  Cars hang from a lit showroom track. Drag, swipe, scroll or use the arrows;
+  the car in the centre comes forward and its details appear underneath.
+  Colours and fonts come from custom properties so the section can follow
+  the theme (Dawn) or its own section settings.
+*/
+.sr {
+  --_bg: var(--sr-bg, #ecebe7);
+  --_fg: var(--sr-fg, #16181b);
+  --_muted: var(--sr-muted, #686b70);
+  --_line: var(--sr-line, #c9c8c3);
+  --_accent: var(--sr-accent, #c47f17);
+  --_tag-bg: var(--sr-tag-bg, #faf9f5);
+  --_tag-fg: var(--sr-tag-fg, #16181b);
+  --_glow: var(--sr-glow, rgba(255, 255, 255, 0.95));
+  --_display: var(--sr-font-display, var(--font-heading-family, system-ui, sans-serif));
+  --_body: var(--sr-font-body, var(--font-body-family, system-ui, sans-serif));
+  --_mono: var(--sr-font-mono, ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace);
+  --_card-w: clamp(210px, 26vw, 330px);
+  --_gap: clamp(10px, 1.6vw, 22px);
+  --_swing: 0deg;
+
+  position: relative;
+  background: var(--_bg);
+  color: var(--_fg);
+  font-family: var(--_body);
+  padding-block: clamp(40px, 6vw, 80px);
+  overflow: hidden;
+}
+
+.sr__head {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-inline: 16px;
+  margin: 0 0 clamp(28px, 4vw, 44px);
+  font-family: var(--_mono);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.sr__eyebrow { font-weight: 600; }
+.sr__divider { width: 1px; height: 14px; background: var(--_line); }
+.sr__subhead { color: var(--_muted); }
+
+/* ---------- The lit track the cars hang from ---------- */
+.sr__stage { position: relative; }
+.sr__track {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 6px;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(var(--_line), var(--_line)) center / 100% 2px no-repeat;
+}
+.sr__track::after {
+  /* soft light strip, echoing the showroom ceiling lights in the photos */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: min(520px, 70%);
+  height: 2px;
+  transform: translateX(-50%);
+  background: var(--_glow);
+  box-shadow: 0 0 18px 4px var(--_glow);
+  border-radius: 2px;
+  opacity: 0.9;
+}
+
+/* ---------- Scroller ---------- */
+.sr__rail {
+  display: flex;
+  gap: var(--_gap);
+  list-style: none;
+  margin: 0;
+  padding: 0 calc(50% - var(--_card-w) / 2) 26px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  cursor: grab;
+  -webkit-overflow-scrolling: touch;
+}
+.sr__rail::-webkit-scrollbar { display: none; }
+.sr__rail.is-dragging { cursor: grabbing; scroll-snap-type: none; }
+.sr__rail.is-dragging .sr__card { pointer-events: none; }
+
+.sr__item {
+  flex: 0 0 var(--_card-w);
+  scroll-snap-align: center;
+  position: relative;
+  padding-top: 46px; /* room for the cord */
+}
+
+/* the cord from track to car */
+.sr__item::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 1px;
+  height: 46px;
+  background: var(--_muted);
+  opacity: 0.55;
+}
+
+.sr__card {
+  display: block;
+  position: relative;
+  color: inherit;
+  text-decoration: none;
+  transform: scale(0.84) translateY(10px);
+  transform-origin: 50% 0;
+  opacity: 0.55;
+  filter: saturate(0.55);
+  transition: transform 0.5s cubic-bezier(.2,.8,.2,1), opacity 0.4s, filter 0.4s;
+  -webkit-user-drag: none;
+}
+.sr__item:hover .sr__card { opacity: 0.85; filter: saturate(0.85); }
+.sr__item.is-active .sr__card { transform: none; opacity: 1; filter: none; }
+.sr__card:focus-visible { outline: none; }
+.sr__card:focus-visible .sr__photo { outline: 2px solid var(--_accent); outline-offset: 4px; }
+
+.sr__photo {
+  position: relative;
+  aspect-ratio: var(--sr-photo-ratio, 16 / 11);
+  max-width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--_line);
+  box-shadow: 0 24px 30px -22px rgba(0, 0, 0, 0.45);
+}
+.sr__photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: var(--sr-photo-focus, 50% 90%);
+  -webkit-user-drag: none;
+  user-select: none;
+}
+.sr--full-photo { --sr-photo-ratio: 1 / 1; --sr-photo-focus: 50% 50%; }
+
+/* floor reflection under the active car */
+.sr__item::after {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 6px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0,0,0,.28), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.sr__item.is-active::after { opacity: 1; }
+
+/* ---------- Swinging price tag (like a dealer's mirror hanger) ---------- */
+.sr__tag {
+  position: absolute;
+  top: 38px;
+  left: 50%;
+  z-index: 2;
+  margin-left: -1px;
+  transform-origin: 1px -8px;
+  transform: rotate(calc(var(--_swing) * var(--k, 1)));
+  pointer-events: none;
+}
+.sr__tag-body {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  min-width: 64px;
+  translate: -50% 0;
+  padding: 9px 10px 7px;
+  background: var(--_tag-bg);
+  color: var(--_tag-fg);
+  border-radius: 3px 3px 6px 6px;
+  box-shadow: 0 6px 12px -6px rgba(0,0,0,.45);
+  font-family: var(--_mono);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+}
+.sr__tag-body::before {
+  /* punched hole */
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-bottom: 3px;
+  border-radius: 50%;
+  background: var(--_bg);
+  box-shadow: inset 0 0 0 1px var(--_line);
+}
+.sr__tag-year { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; }
+.sr__tag-km { font-size: 10px; color: var(--_muted); letter-spacing: 0.04em; }
+.sr__tag-km:empty, .sr__tag-year:empty { display: none; }
+
+.sr__badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-family: var(--_mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--_accent);
+  color: #fff;
+}
+.sr__badge--sold { background: var(--_fg); color: var(--_bg); }
+
+/* ---------- Details of the centred car ---------- */
+.sr__info {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  margin-top: clamp(14px, 2vw, 24px);
+  text-align: center;
+  min-height: 190px;
+}
+.sr__count {
+  font-family: var(--_mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--_muted);
+  font-variant-numeric: tabular-nums;
+}
+.sr__name {
+  margin: 0;
+  max-width: 24ch;
+  font-family: var(--_display);
+  font-size: clamp(22px, 3vw, 34px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.sr__meta {
+  margin: 0;
+  font-family: var(--_mono);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--_muted);
+}
+.sr__meta:empty { display: none; }
+.sr__price {
+  margin: 0;
+  font-family: var(--_display);
+  font-size: clamp(18px, 2vw, 22px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sr__info.is-changing > * { animation: sr-in 0.45s cubic-bezier(.2,.8,.2,1); }
+@keyframes sr-in { from { opacity: 0.2; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.sr__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.sr__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 24px;
+  border-radius: 999px;
+  border: 1px solid var(--_fg);
+  font: 600 14px/1 var(--_body);
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.sr__btn--primary { background: var(--_fg); color: var(--_bg); }
+.sr__btn--primary:hover { background: transparent; color: var(--_fg); }
+.sr__btn--ghost { background: transparent; color: var(--_fg); }
+.sr__btn--ghost:hover { background: var(--_fg); color: var(--_bg); }
+.sr__btn:focus-visible, .sr__arrow:focus-visible { outline: 2px solid var(--_accent); outline-offset: 3px; }
+
+.sr__arrow {
+  position: absolute;
+  top: calc(46px + var(--_card-w) * 11 / 32);
+  z-index: 4;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--_line);
+  background: var(--_bg);
+  color: var(--_fg);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.sr__arrow:hover { border-color: var(--_fg); }
+.sr__arrow[disabled] { opacity: 0.35; cursor: default; }
+.sr__arrow--prev { left: max(16px, env(safe-area-inset-left, 0px)); }
+.sr__arrow--next { right: max(16px, env(safe-area-inset-right, 0px)); }
+.sr__arrow svg { width: 18px; height: 18px; }
+
+@media (max-width: 749px) {
+  .sr { --_card-w: 68vw; }
+  .sr__head { flex-direction: column; gap: 6px; }
+  .sr__divider { display: none; }
+  .sr__arrow { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sr__card, .sr__item::after { transition: none; }
+  .sr__tag { transform: none; }
+  .sr__info.is-changing > * { animation: none; }
+}
