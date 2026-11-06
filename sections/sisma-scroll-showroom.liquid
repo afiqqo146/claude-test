@@ -1,0 +1,171 @@
+{%- comment -%}
+  Sisma Scroll Showroom
+  An overhead view of the showroom floor with one lit bay per car. Scrolling
+  dives into each bay, walks around the car using its studio photos (front,
+  3/4, side, rear 3/4, rear), shows the details panel, then rises and glides
+  to the next bay.
+
+  Add one "Car" block per car. Each block picks a product; the walk-around
+  uses the product photos listed in "Photo order" (positions in the product's
+  media list, 1 = first photo).
+
+  Year / mileage / origin and the spec rows (Engine, Transmission, Power,
+  Exterior...) are read from the listing description, which already follows
+  the "2022 • 7,226 KM • JAPAN IMPORT" and "Engine: ..." pattern.
+{%- endcomment -%}
+
+{{ 'sisma-scroll-showroom.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'sisma-scroll-showroom.js' | asset_url }}" defer="defer"></script>
+
+{%- liquid
+  assign cars_count = 0
+  for block in section.blocks
+    if block.settings.product != blank
+      assign cars_count = cars_count | plus: 1
+    endif
+  endfor
+  assign wa = section.settings.whatsapp | remove: '+' | remove: ' ' | remove: '-'
+-%}
+
+<sisma-scroll-showroom
+  class="ss"
+  style="--ss-ink: {{ section.settings.color_bg }}; --ss-panel: {{ section.settings.color_bg | color_lighten: 4 }}; --ss-fg: {{ section.settings.color_text }}; --ss-accent: {{ section.settings.color_accent }}; --ss-line: {{ section.settings.color_text | color_mix: section.settings.color_bg, 14 }}; --ss-muted: {{ section.settings.color_text | color_mix: section.settings.color_bg, 58 }};"
+  data-deposit="{{ section.settings.deposit }}"
+  data-rate="{{ section.settings.rate | divided_by: 100.0 }}"
+  data-years="{{ section.settings.years }}"
+  data-currency="RM"
+  data-angles="{{ section.settings.angle_labels | escape }}"
+  {{ section.shopify_attributes }}
+>
+  <div class="ss__sticky">
+    <div class="ss__stage">
+      {%- for block in section.blocks -%}
+        {%- assign product = block.settings.product -%}
+        {%- if product == blank -%}{%- continue -%}{%- endif -%}
+        {%- liquid
+          assign desc = product.description | replace: '<br>', ' ¦ ' | replace: '<br/>', ' ¦ ' | replace: '<br />', ' ¦ ' | replace: '</div>', ' ¦ ' | replace: '</p>', ' ¦ ' | replace: '</li>', ' ¦ ' | strip_html | strip_newlines | truncate: 700
+          assign order = block.settings.photo_order | default: '2,1,3,4,5' | split: ','
+          assign price_num = product.price | divided_by: 100
+        -%}
+        <article
+          class="ss__car"
+          data-title="{{ product.title | escape }}"
+          data-vendor="{{ product.vendor | escape }}"
+          data-price="{{ product.price | money_without_trailing_zeros | strip_html | escape }}"
+          data-price-num="{{ price_num }}"
+          data-url="{{ product.url }}"
+          data-desc="{{ desc | escape }}"
+          {%- if block.settings.colour != blank %} data-colour="{{ block.settings.colour }}"{% endif %}
+          {{ block.shopify_attributes }}
+        >
+          <div class="ss__frames">
+            {%- for pos in order -%}
+              {%- assign idx = pos | strip | plus: 0 | minus: 1 -%}
+              {%- assign media = product.media[idx] -%}
+              {%- if media and media.media_type == 'image' -%}
+                {{
+                  media
+                  | image_url: width: 1800
+                  | image_tag:
+                    widths: '750, 1100, 1400, 1800',
+                    sizes: '100vw',
+                    loading: 'lazy',
+                    crossorigin: 'anonymous',
+                    draggable: 'false',
+                    alt: product.title
+                }}
+              {%- endif -%}
+            {%- endfor -%}
+          </div>
+        </article>
+      {%- endfor -%}
+    </div>
+
+    <div class="ss__floor">
+      <div class="ss__floor-cam"></div>
+      <div class="ss__floor-title">
+        {%- if section.settings.eyebrow != blank -%}<span class="ss__floor-eyebrow">{{ section.settings.eyebrow | escape }}</span>{%- endif -%}
+        <h2 class="ss__floor-h">{{ section.settings.heading | escape }}</h2>
+        <p class="ss__floor-sub">{{ section.settings.subheading | replace: '[count]', cars_count | escape }}</p>
+        <span class="ss__scrollcue">Scroll</span>
+      </div>
+    </div>
+
+    <button type="button" class="ss__back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      {{ section.settings.back_label | escape }}
+    </button>
+    <div class="ss__dots" aria-label="Cars"></div>
+    <div class="ss__angles" aria-hidden="true"></div>
+
+    <aside class="ss__panel" aria-live="polite">
+      <span class="ss__p-meta" data-ss-meta></span>
+      <h3 class="ss__p-name" data-ss-name></h3>
+      <p class="ss__p-price" data-ss-price></p>
+      <ul class="ss__p-specs" data-ss-specs></ul>
+      <div class="ss__p-actions">
+        <a class="ss__btn ss__btn--gold" href="#" data-ss-link>{{ section.settings.view_label | escape }}</a>
+        {%- if wa != blank -%}
+          <a class="ss__btn" href="https://wa.me/{{ wa }}" target="_blank" rel="noopener" data-ss-enquire data-wa="{{ wa }}">{{ section.settings.enquire_label | escape }}</a>
+        {%- elsif section.settings.enquire_url != blank -%}
+          <a class="ss__btn" href="{{ section.settings.enquire_url }}" data-ss-enquire>{{ section.settings.enquire_label | escape }}</a>
+        {%- endif -%}
+      </div>
+      {%- if section.settings.show_estimate -%}
+        <div class="ss__p-est" data-ss-est>
+          <span class="ss__p-est-label">Estimated instalment</span>
+          <span class="ss__p-est-val" data-ss-est-val></span>
+          <span class="ss__p-est-note" data-ss-est-note></span>
+        </div>
+      {%- endif -%}
+    </aside>
+  </div>
+</sisma-scroll-showroom>
+
+{% schema %}
+{
+  "name": "Scroll showroom",
+  "tag": "section",
+  "class": "section section-sisma-scroll-showroom",
+  "max_blocks": 10,
+  "settings": [
+    { "type": "header", "content": "Floor" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Sisma Certified" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "The showroom floor" },
+    { "type": "text", "id": "subheading", "label": "Subheading", "info": "[count] is replaced with the number of cars", "default": "[count] cars in today. Scroll to walk around each one." },
+    { "type": "text", "id": "back_label", "label": "Back button label", "default": "The floor" },
+    { "type": "text", "id": "angle_labels", "label": "Angle labels", "info": "Comma separated, in photo order", "default": "Front,Front 3/4,Side,Rear 3/4,Rear" },
+    { "type": "header", "content": "Details panel" },
+    { "type": "text", "id": "view_label", "label": "Car button label", "default": "View this car" },
+    { "type": "text", "id": "enquire_label", "label": "Enquiry button label", "default": "WhatsApp us" },
+    { "type": "text", "id": "whatsapp", "label": "WhatsApp number", "info": "Country code and number, e.g. 60123456789. The message names the car." },
+    { "type": "url", "id": "enquire_url", "label": "Enquiry link (used when no WhatsApp number)" },
+    { "type": "header", "content": "Instalment estimate" },
+    { "type": "checkbox", "id": "show_estimate", "label": "Show monthly estimate", "default": true },
+    { "type": "range", "id": "deposit", "label": "Down payment", "min": 0, "max": 50, "step": 5, "unit": "%", "default": 10 },
+    { "type": "range", "id": "rate", "label": "Flat interest rate (x100)", "info": "300 = 3.00% a year", "min": 150, "max": 600, "step": 5, "default": 300 },
+    { "type": "range", "id": "years", "label": "Loan period", "min": 3, "max": 9, "step": 1, "unit": "yr", "default": 9 },
+    { "type": "header", "content": "Colours" },
+    { "type": "color", "id": "color_bg", "label": "Background", "default": "#0f1012" },
+    { "type": "color", "id": "color_text", "label": "Text", "default": "#f1efe9" },
+    { "type": "color", "id": "color_accent", "label": "Accent", "default": "#d9a441" }
+  ],
+  "blocks": [
+    {
+      "type": "car",
+      "name": "Car",
+      "settings": [
+        { "type": "product", "id": "product", "label": "Car" },
+        { "type": "text", "id": "photo_order", "label": "Photo order", "info": "Photo positions for front, front 3/4, side, rear 3/4, rear. Sisma studio sets are usually 2,1,3,4,5.", "default": "2,1,3,4,5" },
+        { "type": "color", "id": "colour", "label": "Floor plan colour", "info": "Optional. Leave empty to take it from the photos." }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Scroll showroom",
+      "blocks": [ { "type": "car" }, { "type": "car" }, { "type": "car" }, { "type": "car" } ]
+    }
+  ]
+}
+{% endschema %}

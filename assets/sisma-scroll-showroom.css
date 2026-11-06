@@ -1,0 +1,338 @@
+/*
+  Sisma Scroll Showroom
+  An overhead view of the showroom floor. Scrolling dives into a bay, walks
+  around the car using its studio angles, slides in the details, then rises
+  and glides to the next bay.
+*/
+.ss {
+  --_ink: var(--ss-ink, #0f1012);          /* page and panel */
+  --_panel: var(--ss-panel, #17181b);
+  --_fg: var(--ss-fg, #f1efe9);
+  --_muted: var(--ss-muted, #9a9ca1);
+  --_line: var(--ss-line, #2b2d31);
+  --_accent: var(--ss-accent, #d9a441);     /* warm showroom light */
+  --_accent-fg: var(--ss-accent-fg, #17130a);
+  --_floor: var(--ss-floor, #6f706e);       /* concrete, top-down */
+  --_display: var(--ss-font-display, var(--font-heading-family, system-ui, sans-serif));
+  --_body: var(--ss-font-body, var(--font-body-family, system-ui, sans-serif));
+  --_mono: var(--ss-font-mono, ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace);
+  --_panel-w: min(400px, 34vw);
+
+  position: relative;
+  display: block;
+  background: var(--_ink);
+  color: var(--_fg);
+  font-family: var(--_body);
+}
+
+.ss__sticky {
+  position: sticky;
+  top: 0;
+  height: var(--ss-vh, 100vh);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* ---------- Overhead floor ---------- */
+.ss__floor {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(120% 90% at 50% 50%, #7c7d7b, #4a4b4a 70%, #303131);
+  will-change: opacity;
+}
+.ss__floor-cam {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.ss__floor svg { display: block; overflow: visible; }
+.ss__floor-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(28px, 8vh, 80px);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding-inline: 16px;
+  text-align: center;
+  pointer-events: none;
+  text-shadow: 0 2px 18px rgba(0,0,0,.55);
+}
+.ss__floor-eyebrow {
+  font-family: var(--_mono);
+  font-size: 12px;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: var(--_accent);
+}
+.ss__floor-h {
+  margin: 0;
+  font-family: var(--_display);
+  font-size: clamp(30px, 5.4vw, 68px);
+  font-weight: 800;
+  line-height: .98;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.ss__floor-sub { margin: 0; color: #d6d5d0; font-size: 15px; }
+.ss__scrollcue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-family: var(--_mono);
+  font-size: 11px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: #d6d5d0;
+}
+.ss__scrollcue::after {
+  content: "";
+  width: 1px;
+  height: 26px;
+  background: linear-gradient(var(--_accent), transparent);
+  animation: ss-cue 1.6s ease-in-out infinite;
+}
+@keyframes ss-cue { 0%,100% { transform: translateY(-4px); opacity: .4 } 50% { transform: translateY(4px); opacity: 1 } }
+
+/* ---------- Car stage ---------- */
+.ss__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #8c8c8a;
+}
+.ss__car {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+}
+.ss__car.is-on { visibility: visible; }
+.ss__frames {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 62%;
+  will-change: transform, filter;
+}
+.ss__frames img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 72%;
+  opacity: 0;
+  will-change: opacity, transform;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.ss__frames img:first-child { opacity: 1; }
+
+/* ---------- Details panel ---------- */
+.ss__panel {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--_panel-w);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 88px clamp(22px, 2.6vw, 36px) 28px;
+  padding-right: max(clamp(22px, 2.6vw, 36px), env(safe-area-inset-right, 0px));
+  background: color-mix(in srgb, var(--_panel) 94%, transparent);
+  border-left: 1px solid var(--_line);
+  transform: translateX(var(--ss-panel-x, 100%));
+  will-change: transform;
+  overflow-y: auto;
+}
+.ss__p-meta {
+  font-family: var(--_mono);
+  font-size: 11px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--_accent);
+  font-variant-numeric: tabular-nums;
+}
+.ss__p-name {
+  margin: 0;
+  font-family: var(--_display);
+  font-size: clamp(24px, 2.3vw, 34px);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.ss__p-price {
+  margin: 0;
+  font-family: var(--_display);
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ss__p-specs {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: grid;
+  border-top: 1px solid var(--_line);
+}
+.ss__p-specs li {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--_line);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.ss__p-specs span:first-child {
+  font-family: var(--_mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--_muted);
+  padding-top: 2px;
+}
+.ss__p-specs span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.ss__p-actions { display: grid; gap: 8px; margin-top: 6px; }
+.ss__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 4px;
+  font: 600 14px/1 var(--_body);
+  letter-spacing: .02em;
+  text-decoration: none;
+  border: 1px solid var(--_fg);
+  color: var(--_fg);
+  background: transparent;
+  transition: background .2s, color .2s;
+}
+.ss__btn:hover { background: var(--_fg); color: var(--_ink); }
+.ss__btn--gold { background: var(--_accent); border-color: var(--_accent); color: var(--_accent-fg); }
+.ss__btn--gold:hover { background: transparent; color: var(--_accent); }
+.ss__btn:focus-visible, .ss__back:focus-visible, .ss__dot:focus-visible { outline: 2px solid var(--_accent); outline-offset: 3px; }
+.ss__p-est {
+  display: grid;
+  gap: 3px;
+  padding-top: 12px;
+  border-top: 1px solid var(--_line);
+}
+.ss__p-est-label { font-family: var(--_mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--_muted); }
+.ss__p-est-val { font-family: var(--_display); font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ss__p-est-note { font-size: 11px; color: var(--_muted); }
+
+/* ---------- Overlays ---------- */
+.ss__back {
+  position: absolute;
+  z-index: 4;
+  top: 20px;
+  left: max(20px, env(safe-area-inset-left, 0px));
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(15,16,18,.55);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font: 600 12px/1 var(--_mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: var(--ss-ui, 0);
+  pointer-events: var(--ss-ui-pe, none);
+  transition: opacity .3s;
+}
+.ss__back svg { width: 14px; height: 14px; }
+
+.ss__angles {
+  position: absolute;
+  z-index: 4;
+  left: max(20px, env(safe-area-inset-left, 0px));
+  bottom: 22px;
+  display: flex;
+  gap: 6px;
+  opacity: var(--ss-ui, 0);
+  transition: opacity .3s;
+  pointer-events: none;
+}
+.ss__angle {
+  padding: 6px 9px;
+  border-radius: 3px;
+  background: rgba(15,16,18,.5);
+  color: rgba(255,255,255,.6);
+  font: 600 10px/1 var(--_mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  transition: background .2s, color .2s;
+}
+.ss__angle.is-on { background: var(--_accent); color: var(--_accent-fg); }
+
+.ss__dots {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: max(18px, env(safe-area-inset-left, 0px));
+  transform: translateY(-50%);
+  display: grid;
+  gap: 10px;
+  opacity: var(--ss-ui, 0);
+  pointer-events: var(--ss-ui-pe, none);
+  transition: opacity .3s;
+}
+.ss__dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.7);
+  background: transparent;
+  cursor: pointer;
+}
+.ss__dot.is-on { background: var(--_accent); border-color: var(--_accent); }
+
+/* ---------- Phone: car on top, details as a sheet below ---------- */
+@media (max-width: 749px) {
+  .ss__frames { inset: 0 0 auto; height: auto; aspect-ratio: 4 / 3; top: 52px; }
+  .ss__frames img { object-fit: cover; object-position: 50% 70%; }
+  .ss__stage { background: linear-gradient(#8c8c8a 0, #8c8c8a calc(52px + 75vw), var(--_ink) calc(52px + 75vw)); }
+  .ss__panel {
+    top: calc(52px + 75vw - 8px);
+    left: 0;
+    width: auto;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    border-left: 0;
+    border-top: 1px solid var(--_line);
+    border-radius: 14px 14px 0 0;
+    transform: translateY(var(--ss-panel-y, 100%));
+  }
+  .ss__p-name { font-size: 24px; }
+  .ss__p-price { font-size: 20px; }
+  .ss__p-specs li { grid-template-columns: 84px 1fr; padding: 6px 0; font-size: 12.5px; }
+  .ss__p-est { grid-template-columns: auto 1fr; align-items: baseline; column-gap: 12px; padding-top: 10px; }
+  .ss__p-est-note { grid-column: 1 / -1; }
+  .ss__p-actions { grid-template-columns: 1fr 1fr; }
+  .ss__back { top: 9px; }
+  .ss__angles { top: calc(52px + 75vw - 40px); bottom: auto; left: 12px; }
+  .ss__angle { padding: 5px 7px; font-size: 9px; }
+  .ss__dots { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ss__scrollcue::after { animation: none; }
+}

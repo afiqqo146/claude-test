@@ -42,3 +42,41 @@ Built for the store's current theme (Dawn 6.0.2). It works with any Online Store
 Collection · cars to show (3–30) · starting car · eyebrow and subheading · button labels ·
 photo framing (crop to the car, or full square photo) · NEW badge window · background, text
 and badge colours.
+
+---
+
+# Sisma Scroll Showroom
+
+A scroll-driven showroom section. It opens on an overhead view of the showroom
+floor, with one lit bay per car. As the customer scrolls, the camera dives into a
+bay and they walk around the car (front, front 3/4, side, rear 3/4, rear). A
+details panel slides in with year · km · origin, price, engine/gearbox/power/colour,
+a WhatsApp button and a monthly instalment estimate. Then the camera rises and
+glides to the next bay.
+
+It uses the first five studio photos every listing already has, so no extra filming is needed.
+
+## Files
+
+| File | Goes in |
+| --- | --- |
+| `sections/sisma-scroll-showroom.liquid` | Theme → **Sections** |
+| `assets/sisma-scroll-showroom.css` | Theme → **Assets** |
+| `assets/sisma-scroll-showroom.js` | Theme → **Assets** |
+
+Install the same way as the Showroom Rail (steps above), then **Add section → Scroll showroom**.
+
+## Setting it up
+
+- Add one **Car** block per car (up to 10) and pick the product.
+- **Photo order** lists which photos make the walk-around, as positions in the
+  product's photo list. Sisma studio sets are `2,1,3,4,5` (front, front 3/4, side,
+  rear 3/4, rear). If a listing has the rear and rear 3/4 swapped (for example the
+  Range Rover First Edition), use `2,1,3,5,4`.
+- **WhatsApp number**: enter it with the country code, e.g. `60123456789`. The
+  button opens WhatsApp with a message that names the car and links to it.
+- **Instalment estimate**: down payment, flat rate and loan period. Monthly
+  = (price − down payment) × (1 + rate × years) ÷ (years × 12). It's labelled as an
+  estimate, subject to bank approval.
+- The overhead floor colours each car from its side photo. If one looks off,
+  set **Floor plan colour** on that block.
