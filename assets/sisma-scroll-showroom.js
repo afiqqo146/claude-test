@@ -13,7 +13,7 @@
 
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
   var SVGNS = 'http://www.w3.org/2000/svg';
-  var BAY_W = 150, BAY_H = 250, LANE = 120;
+  var BAY_W = 250, BAY_H = 210, HEX_W = 222, HEX_H = 182, LANE = 110;
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -61,43 +61,6 @@
     }).replace(/\b(\d+(?:\.\d+)?)(l|hp|ps|kw|kwh|nm)\b/gi, function (w, n, u) { return n + (u.toLowerCase() === 'l' ? 'L' : u.toUpperCase()); });
   }
 
-  // average body colour from the side photo, for the overhead car shape
-  function bodyColour(img) {
-    try {
-      var c = document.createElement('canvas'), w = 48, h = 36;
-      c.width = w; c.height = h;
-      var x = c.getContext('2d', { willReadFrequently: true });
-      x.drawImage(img, 0, 0, w, h);
-      var d = x.getImageData(0, 0, w, h).data;
-      var px = function (fx, fy) { var i = (Math.floor(fy * h) * w + Math.floor(fx * w)) * 4; return [d[i], d[i + 1], d[i + 2]]; };
-      // studio wall and floor, sampled at the edges where there is no car
-      var bgs = [px(.03, .4), px(.03, .55), px(.03, .75), px(.03, .9), px(.97, .5), px(.97, .85)];
-      var near = function (r, g, b) {
-        return bgs.some(function (c) { return Math.abs(r - c[0]) + Math.abs(g - c[1]) + Math.abs(b - c[2]) < 42; });
-      };
-      var buckets = {}, best = null, bestN = 0, grey = [0, 0, 0, 0], total = 0;
-      for (var yy = Math.floor(h * .5); yy < h * .78; yy++) {
-        for (var xx = Math.floor(w * .18); xx < w * .82; xx++) {
-          var i = (yy * w + xx) * 4, r = d[i], g = d[i + 1], b = d[i + 2];
-          if (near(r, g, b)) continue;
-          total++;
-          var mx = Math.max(r, g, b), mn = Math.min(r, g, b), s = mx ? (mx - mn) / mx : 0;
-          if (s > .28 && mx > 60) { // coloured paint
-            var k = (r >> 5) + ',' + (g >> 5) + ',' + (b >> 5);
-            var e = buckets[k] || (buckets[k] = [0, 0, 0, 0]);
-            e[0] += r; e[1] += g; e[2] += b; e[3]++;
-            if (e[3] > bestN) { bestN = e[3]; best = e; }
-          } else if (mx > 30) { // white, silver, grey or black paint (tyre/shadow black skipped)
-            grey[0] += r; grey[1] += g; grey[2] += b; grey[3]++;
-          }
-        }
-      }
-      var pick = best && bestN > total * .12 ? best : grey[3] ? grey : null;
-      if (!pick) return null;
-      return 'rgb(' + Math.round(pick[0] / pick[3]) + ',' + Math.round(pick[1] / pick[3]) + ',' + Math.round(pick[2] / pick[3]) + ')';
-    } catch (err) { return null; } // cross-origin image without CORS
-  }
-
   function el(tag, attrs, parent) {
     var n = document.createElementNS(SVGNS, tag);
     for (var k in attrs) n.setAttribute(k, attrs[k]);
@@ -121,17 +84,10 @@
       this.years = parseFloat(this.getAttribute('data-years') || '9');
       this.currency = this.getAttribute('data-currency') || 'RM';
 
-      var self = this;
-      this.cars.forEach(function (car, i) {
+      this.cars.forEach(function (car) {
         car._frames = Array.prototype.slice.call(car.querySelectorAll('.ss__frames img'));
         car._wrap = car.querySelector('.ss__frames');
         car._info = parseSpecs(car.getAttribute('data-desc'));
-        car._colour = car.getAttribute('data-colour') || null;
-        var side = car._frames[2] || car._frames[0];
-        var grab = function () {
-          if (!car._colour) { car._colour = bodyColour(side); self.paintBay(i); }
-        };
-        if (side && side.complete && side.naturalWidth) grab(); else if (side) side.addEventListener('load', grab, { once: true });
       });
 
       this.buildFloor();
@@ -150,7 +106,7 @@
       window.removeEventListener('resize', this.onResize);
     }
 
-    // ---- overhead floor: one lit bay per car ----
+    // ---- overhead floor: one lit bay per car, showing the car's front photo ----
     buildFloor() {
       var n = this.cars.length;
       this.floorW = n * BAY_W + LANE * 2;
@@ -158,46 +114,46 @@
       var svg = el('svg', { width: this.floorW, height: this.floorH, viewBox: '0 0 ' + this.floorW + ' ' + this.floorH, 'aria-hidden': 'true' });
       var defs = el('defs', {}, svg);
       var glow = el('radialGradient', { id: 'ssGlow' }, defs);
-      el('stop', { offset: '0', 'stop-color': '#fff', 'stop-opacity': '.32' }, glow);
+      el('stop', { offset: '0', 'stop-color': '#fff', 'stop-opacity': '.3' }, glow);
       el('stop', { offset: '1', 'stop-color': '#fff', 'stop-opacity': '0' }, glow);
-      el('rect', { x: 0, y: 0, width: this.floorW, height: this.floorH, fill: 'transparent' }, svg);
       // lane marking along the front of the bays
       el('line', { x1: 40, x2: this.floorW - 40, y1: LANE + BAY_H + 46, y2: LANE + BAY_H + 46, stroke: 'rgba(255,255,255,.35)', 'stroke-width': 3, 'stroke-dasharray': '26 18' }, svg);
       this.bays = [];
+      var uid = 'ss' + Math.random().toString(36).slice(2, 7);
       for (var i = 0; i < n; i++) {
         var x = LANE + i * BAY_W, y = LANE;
         var g = el('g', { transform: 'translate(' + x + ',' + y + ')' }, svg);
-        el('ellipse', { cx: BAY_W / 2, cy: BAY_H / 2, rx: BAY_W * .62, ry: BAY_H * .5, fill: 'url(#ssGlow)' }, g);
-        // the hexagon light from the studio ceiling, seen from above
-        var hx = BAY_W / 2, hy = BAY_H / 2, rw = 62, rh = 112, cut = 30;
-        el('polygon', {
-          points: [hx - rw + cut, hy - rh, hx + rw - cut, hy - rh, hx + rw, hy - rh + cut * 1.6, hx + rw, hy + rh - cut * 1.6, hx + rw - cut, hy + rh, hx - rw + cut, hy + rh, hx - rw, hy + rh - cut * 1.6, hx - rw, hy - rh + cut * 1.6].join(' '),
-          fill: 'none', stroke: 'rgba(255,255,255,.75)', 'stroke-width': 3, class: 'ss-hex'
-        }, g);
-        if (i === 0) el('line', { x1: 0, x2: 0, y1: 0, y2: BAY_H, stroke: 'rgba(255,255,255,.55)', 'stroke-width': 3 }, g);
-        el('line', { x1: BAY_W, x2: BAY_W, y1: 0, y2: BAY_H, stroke: 'rgba(255,255,255,.55)', 'stroke-width': 3 }, g);
-        // top-down car
-        var car = el('g', { transform: 'translate(' + (BAY_W / 2 - 34) + ',' + (BAY_H / 2 - 82) + ')' }, g);
-        el('rect', { x: 4, y: 10, width: 60, height: 150, rx: 6, fill: 'rgba(0,0,0,.35)', filter: '' }, car);
-        var body = el('rect', { x: 0, y: 0, width: 68, height: 164, rx: 22, fill: '#b9b9b6' }, car);
-        el('rect', { x: 8, y: 40, width: 52, height: 26, rx: 8, fill: 'rgba(10,12,16,.78)' }, car);   // windscreen
-        el('rect', { x: 10, y: 70, width: 48, height: 52, rx: 6, fill: 'rgba(255,255,255,.12)' }, car); // roof
-        el('rect', { x: 10, y: 124, width: 48, height: 18, rx: 6, fill: 'rgba(10,12,16,.7)' }, car);  // rear glass
-        el('rect', { x: -6, y: 44, width: 8, height: 10, rx: 3, fill: 'rgba(10,12,16,.75)' }, car);
-        el('rect', { x: 66, y: 44, width: 8, height: 10, rx: 3, fill: 'rgba(10,12,16,.75)' }, car);
+        el('ellipse', { cx: BAY_W / 2, cy: BAY_H / 2, rx: BAY_W * .6, ry: BAY_H * .6, fill: 'url(#ssGlow)' }, g);
+        // hexagon light from the studio ceiling, framing the bay
+        var hx = BAY_W / 2, hy = BAY_H / 2, rw = HEX_W / 2, rh = HEX_H / 2, cx = 34, cy = 30;
+        var pts = [hx - rw + cx, hy - rh, hx + rw - cx, hy - rh, hx + rw, hy - rh + cy, hx + rw, hy + rh - cy, hx + rw - cx, hy + rh, hx - rw + cx, hy + rh, hx - rw, hy + rh - cy, hx - rw, hy - rh + cy].join(' ');
+        var clip = el('clipPath', { id: uid + 'h' + i }, defs);
+        el('polygon', { points: pts }, clip);
+        el('polygon', { points: pts, fill: '#8c8c8a' }, g);
+        // the car's front photo, cropped so the car sits in the middle of the hexagon
+        var front = this.cars[i]._frames[0];
+        if (front) {
+          var iw = HEX_W * 1.35, ih = iw * .75;
+          var img = el('image', {
+            x: hx - iw / 2, y: hy - ih * .62, width: iw, height: ih,
+            preserveAspectRatio: 'xMidYMid slice', 'clip-path': 'url(#' + uid + 'h' + i + ')'
+          }, g);
+          var setSrc = function (im, node) {
+            var src = im.currentSrc || im.src;
+            if (src) { node.setAttribute('href', src); node.setAttributeNS('http://www.w3.org/1999/xlink', 'href', src); }
+          };
+          setSrc(front, img);
+          front.addEventListener('load', setSrc.bind(null, front, img));
+        }
+        var hex = el('polygon', { points: pts, fill: 'none', stroke: 'rgba(255,255,255,.75)', 'stroke-width': 3 }, g);
+        if (i === 0) el('line', { x1: 0, x2: 0, y1: 4, y2: BAY_H - 4, stroke: 'rgba(255,255,255,.55)', 'stroke-width': 3 }, g);
+        el('line', { x1: BAY_W, x2: BAY_W, y1: 4, y2: BAY_H - 4, stroke: 'rgba(255,255,255,.55)', 'stroke-width': 3 }, g);
         // bay number painted on the floor
         var t = el('text', { x: BAY_W / 2, y: BAY_H + 30, 'text-anchor': 'middle', fill: 'rgba(255,255,255,.8)', 'font-size': 15, 'font-weight': 700, 'letter-spacing': 3, 'font-family': 'ui-monospace, Menlo, monospace' }, g);
         t.textContent = 'BAY ' + String(i + 1).padStart(2, '0');
-        this.bays.push({ cx: x + BAY_W / 2, cy: y + BAY_H / 2, body: body, hex: g.querySelector('.ss-hex') });
-        this.paintBay(i);
+        this.bays.push({ cx: x + hx, cy: y + hy, hex: hex });
       }
       this.cam.appendChild(svg);
-    }
-
-    paintBay(i) {
-      if (!this.bays || !this.bays[i]) return;
-      var c = this.cars[i]._colour;
-      if (c) this.bays[i].body.setAttribute('fill', c);
     }
 
     buildUi() {
@@ -282,7 +238,7 @@
       var p = clamp((t - seg.start) / seg.len, 0, 1);
 
       var W = this.sticky.clientWidth, H = this.sticky.clientHeight;
-      var close = Math.min(H / (BAY_H + 120), W / (BAY_W * 2.4)) * 1.0;
+      var close = Math.min(H / (BAY_H + 150), W / (BAY_W * (this.phone ? 1.25 : 2.2)));
       var wide = Math.min(W / (this.floorW + 40), H / (this.floorH + 40));
       wide = Math.min(wide, close * .8);
       var cx, cy, s, floorOp = 1, carOp = 0, carIdx = seg.car || 0, frameF = 0, carZoom = 1, blur = 0, panel = 0, titleOp = 0;

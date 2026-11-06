@@ -48,7 +48,7 @@ and badge colours.
 # Sisma Scroll Showroom
 
 A scroll-driven showroom section. It opens on an overhead view of the showroom
-floor, with one lit bay per car. As the customer scrolls, the camera dives into a
+floor, with one lit bay per car showing its front photo. As the customer scrolls, the camera dives into a
 bay and they walk around the car (front, front 3/4, side, rear 3/4, rear). A
 details panel slides in with year · km · origin, price, engine/gearbox/power/colour,
 a WhatsApp button and a monthly instalment estimate. Then the camera rises and
@@ -78,5 +78,5 @@ Install the same way as the Showroom Rail (steps above), then **Add section → 
 - **Instalment estimate**: down payment, flat rate and loan period. Monthly
   = (price − down payment) × (1 + rate × years) ÷ (years × 12). It's labelled as an
   estimate, subject to bank approval.
-- The overhead floor colours each car from its side photo. If one looks off,
-  set **Floor plan colour** on that block.
+- Each bay on the overhead floor shows the car's front photo (the first photo in
+  **Photo order**), so the dive into the bay leads straight into the walk-around.
