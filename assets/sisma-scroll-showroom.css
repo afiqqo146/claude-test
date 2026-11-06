@@ -49,6 +49,12 @@
   will-change: transform;
 }
 .ss__floor svg { display: block; overflow: visible; }
+.ss__bay { cursor: pointer; outline: none; }
+.ss__hexline { stroke: rgba(255,255,255,.55); stroke-width: 3; transition: stroke .2s, stroke-width .2s; }
+.ss__bay:hover .ss__hexline, .ss__bay.is-on .ss__hexline { stroke: rgba(255,214,140,.98); }
+.ss__bay:focus-visible .ss__hexline { stroke: var(--_accent); stroke-width: 6; }
+.ss__bay image { transition: opacity .2s; }
+.ss__bay:hover image { opacity: .9; }
 .ss__floor-title {
   position: absolute;
   left: 0;
@@ -105,6 +111,7 @@
   inset: 0;
   z-index: 0;
   background: #8c8c8a;
+  cursor: pointer;
 }
 .ss__car {
   position: absolute;
@@ -265,13 +272,16 @@
   bottom: 22px;
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
   opacity: var(--ss-ui, 0);
   transition: opacity .3s;
-  pointer-events: none;
+  pointer-events: var(--ss-ui-pe, none);
 }
 .ss__angle {
-  padding: 6px 9px;
+  padding: 7px 10px;
+  border: 0;
   border-radius: 3px;
+  cursor: pointer;
   background: rgba(15,16,18,.5);
   color: rgba(255,255,255,.6);
   font: 600 10px/1 var(--_mono);
@@ -279,7 +289,11 @@
   text-transform: uppercase;
   transition: background .2s, color .2s;
 }
+.ss__angle:hover { color: #fff; background: rgba(15,16,18,.75); }
 .ss__angle.is-on { background: var(--_accent); color: var(--_accent-fg); }
+.ss__angle:focus-visible { outline: 2px solid var(--_accent); outline-offset: 2px; }
+.ss__angle--next { margin-left: 6px; background: rgba(241,239,233,.92); color: #111; }
+.ss__angle--next:hover { background: #fff; color: #111; }
 
 .ss__dots {
   position: absolute;
@@ -328,8 +342,9 @@
   .ss__p-est-note { grid-column: 1 / -1; }
   .ss__p-actions { grid-template-columns: 1fr 1fr; }
   .ss__back { top: 9px; }
-  .ss__angles { top: calc(52px + 75vw - 40px); bottom: auto; left: 12px; }
-  .ss__angle { padding: 5px 7px; font-size: 9px; }
+  .ss__angles { top: calc(52px + 75vw - 42px); bottom: auto; left: 10px; right: 10px; gap: 4px; flex-wrap: nowrap; }
+  .ss__angle { padding: 7px 6px; font-size: 9px; letter-spacing: .08em; white-space: nowrap; }
+  .ss__angle--next { margin-left: auto; }
   .ss__dots { display: none; }
 }
 

@@ -104,6 +104,7 @@
     disconnectedCallback() {
       window.removeEventListener('scroll', this.onScroll);
       window.removeEventListener('resize', this.onResize);
+      if (this.onKey) window.removeEventListener('keydown', this.onKey);
     }
 
     // ---- overhead floor: one lit bay per car, showing the car's front photo ----
@@ -120,9 +121,15 @@
       el('line', { x1: 40, x2: this.floorW - 40, y1: LANE + BAY_H + 46, y2: LANE + BAY_H + 46, stroke: 'rgba(255,255,255,.35)', 'stroke-width': 3, 'stroke-dasharray': '26 18' }, svg);
       this.bays = [];
       var uid = 'ss' + Math.random().toString(36).slice(2, 7);
-      for (var i = 0; i < n; i++) {
+      var self = this;
+      for (let i = 0; i < n; i++) {
         var x = LANE + i * BAY_W, y = LANE;
-        var g = el('g', { transform: 'translate(' + x + ',' + y + ')' }, svg);
+        var title = this.cars[i].getAttribute('data-title') || 'car ' + (i + 1);
+        var g = el('g', { transform: 'translate(' + x + ',' + y + ')', class: 'ss__bay', tabindex: '0', role: 'button', 'aria-label': 'Walk around the ' + title }, svg);
+        g.addEventListener('click', function (e) { e.stopPropagation(); self.goCar(i, 0); });
+        g.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); self.goCar(i, 0); }
+        });
         el('ellipse', { cx: BAY_W / 2, cy: BAY_H / 2, rx: BAY_W * .6, ry: BAY_H * .6, fill: 'url(#ssGlow)' }, g);
         // hexagon light from the studio ceiling, framing the bay
         var hx = BAY_W / 2, hy = BAY_H / 2, rw = HEX_W / 2, rh = HEX_H / 2, cx = 34, cy = 30;
@@ -145,13 +152,13 @@
           setSrc(front, img);
           front.addEventListener('load', setSrc.bind(null, front, img));
         }
-        var hex = el('polygon', { points: pts, fill: 'none', stroke: 'rgba(255,255,255,.75)', 'stroke-width': 3 }, g);
+        var hex = el('polygon', { points: pts, fill: 'none', class: 'ss__hexline' }, g);
         if (i === 0) el('line', { x1: 0, x2: 0, y1: 4, y2: BAY_H - 4, stroke: 'rgba(255,255,255,.55)', 'stroke-width': 3 }, g);
         el('line', { x1: BAY_W, x2: BAY_W, y1: 4, y2: BAY_H - 4, stroke: 'rgba(255,255,255,.55)', 'stroke-width': 3 }, g);
         // bay number painted on the floor
         var t = el('text', { x: BAY_W / 2, y: BAY_H + 30, 'text-anchor': 'middle', fill: 'rgba(255,255,255,.8)', 'font-size': 15, 'font-weight': 700, 'letter-spacing': 3, 'font-family': 'ui-monospace, Menlo, monospace' }, g);
         t.textContent = 'BAY ' + String(i + 1).padStart(2, '0');
-        this.bays.push({ cx: x + hx, cy: y + hy, hex: hex });
+        this.bays.push({ cx: x + hx, cy: y + hy, g: g });
       }
       this.cam.appendChild(svg);
     }
@@ -163,12 +170,20 @@
       if (this.anglesEl) {
         var max = Math.max.apply(null, this.cars.map(function (c) { return c._frames.length; }));
         for (var i = 0; i < max; i++) {
-          var a = document.createElement('span');
+          let a = document.createElement('button'), j = i;
+          a.type = 'button';
           a.className = 'ss__angle';
           a.textContent = labels[i] || ('View ' + (i + 1));
+          a.addEventListener('click', function (e) { e.stopPropagation(); self.goCar(self.cur ? self.cur.car : 0, j); });
           this.anglesEl.appendChild(a);
           this.angleEls.push(a);
         }
+        this.nextBtn = document.createElement('button');
+        this.nextBtn.type = 'button';
+        this.nextBtn.className = 'ss__angle ss__angle--next';
+        this.nextBtn.textContent = 'Next car \u203a';
+        this.nextBtn.addEventListener('click', function (e) { e.stopPropagation(); self.nextCar(); });
+        this.anglesEl.appendChild(this.nextBtn);
       }
       this.dotEls = [];
       if (this.dotsEl) {
@@ -177,13 +192,71 @@
           b.type = 'button';
           b.className = 'ss__dot';
           b.setAttribute('aria-label', 'Go to ' + (car.getAttribute('data-title') || 'car ' + (i + 1)));
-          b.addEventListener('click', function () { self.jumpTo('walk', i, .02); });
+          b.addEventListener('click', function () { self.goCar(i, 0); });
           self.dotsEl.appendChild(b);
           self.dotEls.push(b);
         });
       }
       var back = this.querySelector('.ss__back');
-      if (back) back.addEventListener('click', function () { self.jumpTo('intro', 0, 0); });
+      if (back) back.addEventListener('click', function (e) { e.stopPropagation(); self.jumpTo('intro', 0, 0); });
+
+      // click or tap anywhere on the car (or empty floor) to move on
+      var stage = this.querySelector('.ss__stage');
+      if (stage) stage.addEventListener('click', function () { self.step(1); });
+      if (this.floor) this.floor.addEventListener('click', function () { self.step(1); });
+
+      // arrow keys while the showroom fills the screen
+      window.addEventListener('keydown', this.onKey = function (e) {
+        if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+        var tag = (document.activeElement && document.activeElement.tagName) || '';
+        if (/INPUT|TEXTAREA|SELECT/.test(tag)) return;
+        var r = self.getBoundingClientRect();
+        if (r.top > 1 || r.bottom < window.innerHeight - 1) return;
+        if (e.key === 'ArrowRight') { e.preventDefault(); self.step(1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); self.step(-1); }
+      });
+    }
+
+    // scroll position (as a fraction of the walk segment) that shows angle j cleanly
+    walkP(j, n) {
+      if (n < 2) return .5;
+      var u = j / (n - 1), lo = 0, hi = 1;
+      for (var k = 0; k < 30; k++) { var m = (lo + hi) / 2; if (ease(m) < u) lo = m; else hi = m; }
+      var p = .08 + lo * .84;
+      return j === 0 ? Math.max(p, .16) : p; // angle 0: wait until the panel is in
+    }
+
+    goCar(i, j) {
+      var n = this.cars[i]._frames.length;
+      j = clamp(j, 0, n - 1);
+      this.jumpTo('walk', i, this.walkP(j, n));
+    }
+
+    nextCar() {
+      var c = this.cur ? this.cur.car : 0;
+      if (c + 1 < this.cars.length) this.goCar(c + 1, 0);
+      else this.jumpTo('outro', c, 1);
+    }
+
+    // one click / tap / arrow press = one step through the showroom
+    step(dir) {
+      var c = this.cur || { type: 'intro', car: 0, frame: 0, frames: 1 }, last = this.cars.length - 1;
+      if (c.type === 'walk') {
+        var j = c.frame + dir;
+        if (j >= 0 && j < c.frames) return this.goCar(c.car, j);
+        if (dir > 0) return this.nextCar();
+        if (c.car > 0) return this.goCar(c.car - 1, this.cars[c.car - 1]._frames.length - 1);
+        return this.jumpTo('intro', 0, 0);
+      }
+      if (dir > 0) {
+        if (c.type === 'intro' || c.type === 'dive') return this.goCar(c.car, 0);
+        if (c.type === 'outro') return;
+        return c.car < last ? this.goCar(c.car + 1, 0) : this.jumpTo('outro', c.car, 1);
+      }
+      if (c.type === 'intro') return;
+      var target = c.type === 'dive' ? c.car - 1 : c.car;
+      if (target < 0) return this.jumpTo('intro', 0, 0);
+      this.goCar(target, this.cars[target]._frames.length - 1);
     }
 
     // timeline in "screens" of scrolling
@@ -287,7 +360,8 @@
       this.floor.style.visibility = floorOp <= 0.001 ? 'hidden' : 'visible';
       if (this.titleEl) this.titleEl.style.opacity = titleOp;
       var bayOn = seg.type === 'pan' ? Math.round(lerp(carIdx, carIdx + 1, ease(p))) : carIdx;
-      b.forEach(function (bay, k) { bay.hex.setAttribute('stroke', k === bayOn ? 'rgba(255,214,140,.98)' : 'rgba(255,255,255,.55)'); });
+      b.forEach(function (bay, k) { bay.g.classList.toggle('is-on', k === bayOn); });
+      this.cur = { type: seg.type, car: carIdx, frame: Math.round(frameF), frames: this.cars[carIdx]._frames.length };
 
       // cars
       var self = this;
@@ -296,8 +370,15 @@
         car.classList.toggle('is-on', on);
         car.style.opacity = on ? carOp : 0;
         if (!on) return;
-        var drift = self.phone ? 0 : -panel * 0.13 * W; // move the car left to make room for the panel
-        car._wrap.style.transform = 'translateX(' + drift + 'px) scale(' + carZoom + ')';
+        car._wrap.style.transform = 'scale(' + carZoom.toFixed(4) + ')';
+        // desktop: size the photos so they always fill the height, and centre the car in the
+        // space left of the panel, a little smaller so long cars (side view) fit beside it
+        var box = null;
+        if (!self.phone) {
+          var pw = self.panel ? self.panel.offsetWidth * panel : 0;
+          var iw = Math.max(W * (1 - .45 * pw / W), (H + 2) / .75, W - pw), ih = iw * .75;
+          box = { l: ((W - pw) / 2 - iw / 2).toFixed(1) + 'px', t: ((H - ih) * .72).toFixed(1) + 'px', w: iw.toFixed(1) + 'px', h: ih.toFixed(1) + 'px' };
+        }
         car._wrap.style.filter = blur > .2 ? 'blur(' + blur.toFixed(1) + 'px)' : 'none';
         // each angle holds, then the next one fades in on top quickly
         var base = Math.floor(frameF), mix = span(frameF - base, .62, .92);
@@ -305,6 +386,8 @@
           var dist = j - frameF;
           var op = j === base ? 1 : j === base + 1 ? mix : 0;
           img.style.opacity = op.toFixed(3);
+          if (box) { img.style.left = box.l; img.style.top = box.t; img.style.width = box.w; img.style.height = box.h; img.style.right = 'auto'; img.style.bottom = 'auto'; }
+          else if (img.style.width) { img.style.left = img.style.top = img.style.width = img.style.height = img.style.right = img.style.bottom = ''; }
           // small sideways drift and zoom so the cut between angles feels like a camera move
           img.style.transform = reduce.matches ? 'none' : 'translateX(' + (dist * -3).toFixed(2) + '%) scale(' + (1.02 + Math.abs(dist) * .03).toFixed(3) + ')';
         });
@@ -321,6 +404,7 @@
       var fi = Math.round(frameF);
       this.angleEls.forEach(function (a, j) { a.classList.toggle('is-on', j === fi); a.hidden = j >= self.cars[carIdx]._frames.length; });
       this.dotEls.forEach(function (d, j) { d.classList.toggle('is-on', j === carIdx); });
+      if (this.nextBtn) this.nextBtn.textContent = carIdx < this.cars.length - 1 ? 'Next car \u203a' : 'Finish \u203a';
     }
 
     fillPanel(i) {

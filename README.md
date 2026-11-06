@@ -56,6 +56,14 @@ glides to the next bay.
 
 It uses the first five studio photos every listing already has, so no extra filming is needed.
 
+Customers who don't want to scroll can click or tap instead:
+
+- **Floor**: click a bay's photo to go straight to that car.
+- **Car photo**: click or tap for the next angle. After the last angle it moves to the next car.
+- **Angle buttons** (Front, Front 3/4, Side, Rear 3/4, Rear) and **Next car ›** sit under the photo.
+- **Keyboard**: Tab to a bay and press Enter. The left and right arrow keys step through angles and cars.
+- **‹ The floor** goes back to the overview.
+
 ## Files
 
 | File | Goes in |

@@ -86,7 +86,7 @@
         {%- if section.settings.eyebrow != blank -%}<span class="ss__floor-eyebrow">{{ section.settings.eyebrow | escape }}</span>{%- endif -%}
         <h2 class="ss__floor-h">{{ section.settings.heading | escape }}</h2>
         <p class="ss__floor-sub">{{ section.settings.subheading | replace: '[count]', cars_count | escape }}</p>
-        <span class="ss__scrollcue">Scroll</span>
+        <span class="ss__scrollcue">Scroll or tap</span>
       </div>
     </div>
 
@@ -95,7 +95,7 @@
       {{ section.settings.back_label | escape }}
     </button>
     <div class="ss__dots" aria-label="Cars"></div>
-    <div class="ss__angles" aria-hidden="true"></div>
+    <div class="ss__angles" role="group" aria-label="Angles"></div>
 
     <aside class="ss__panel" aria-live="polite">
       <span class="ss__p-meta" data-ss-meta></span>
@@ -131,7 +131,7 @@
     { "type": "header", "content": "Floor" },
     { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Sisma Certified" },
     { "type": "text", "id": "heading", "label": "Heading", "default": "The showroom floor" },
-    { "type": "text", "id": "subheading", "label": "Subheading", "info": "[count] is replaced with the number of cars", "default": "[count] cars in today. Scroll to walk around each one." },
+    { "type": "text", "id": "subheading", "label": "Subheading", "info": "[count] is replaced with the number of cars", "default": "[count] cars in today. Scroll, or tap a car to walk around it." },
     { "type": "text", "id": "back_label", "label": "Back button label", "default": "The floor" },
     { "type": "text", "id": "angle_labels", "label": "Angle labels", "info": "Comma separated, in photo order", "default": "Front,Front 3/4,Side,Rear 3/4,Rear" },
     { "type": "header", "content": "Details panel" },
